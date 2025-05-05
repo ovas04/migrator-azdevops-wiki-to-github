@@ -1,0 +1,45 @@
+name: Migrate Wiki
+run-name: Migrate ${{ github.event.inputs.azure_repo }} Wiki to ${{ github.event.inputs.github_repo }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      azure_repo:
+        description: 'Source wiki: <org>/<project>/_git/<repo>.wiki'      
+        required: true
+        type: string
+      github_repo:
+        description: 'Destination repository: <org>/<repo>.git' 
+        required: true
+        type: string
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔄 Checkout migration scripts
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 👤 Set up Git identity
+        run: |
+          git config --global user.name  "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: 🛠️ Install git
+        run: sudo apt-get update && sudo apt-get install -y git
+        shell: bash
+
+      - name: 🚀 Run migration script
+        env:
+          AZURE_DEVOPS_TOKEN: ${{ secrets.AZURE_DEVOPS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          AZURE_DEVOPS_USER: ${{ secrets.AZURE_DEVOPS_USER }}
+        run: |
+          AZURE_REPO_URL="https://${AZURE_DEVOPS_USER}:${AZURE_DEVOPS_TOKEN}@dev.azure.com/${{ github.event.inputs.azure_repo }}"
+          GITHUB_REPO_URL="https://${GITHUB_TOKEN}@github.com/${{ github.event.inputs.github_repo }}"
+          bash ./migrate-wiki.sh \
+            --azure-url "$AZURE_REPO_URL" \
+            --github-url "$GITHUB_REPO_URL"
+        shell: bash
